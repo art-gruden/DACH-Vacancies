@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     ai_chat_model: str = "qwen2.5:7b-instruct"
     ai_embed_model: str = ""  # empty → semantic reranking disabled
     ai_timeout_s: float = 60.0
+    ai_chat_extra: dict = Field(default_factory=dict)  # merged into chat requests, e.g. {"reasoning_effort": "low"}
     ai_monthly_budget_usd: float = 5.0
     ai_daily_user_calls: int = 30
     ai_price_in_per_1k: float = 0.0

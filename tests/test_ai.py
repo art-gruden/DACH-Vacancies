@@ -194,3 +194,27 @@ async def test_openai_compat_provider_wire_format(db):
     async with db.session() as s:
         cost = (await s.execute(select(func.sum(AiUsage.cost_usd)))).scalar()
     assert cost == pytest.approx(12 / 1000 + 3 / 1000 * 2 + 4 / 1000)
+
+
+async def test_provider_switches_to_reasoning_parameters(db):
+    import json as _json
+
+    import httpx
+
+    bodies = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = _json.loads(req.content)
+        bodies.append(body)
+        if "max_tokens" in body:  # what api.openai.com answers for GPT-5 / o-series models
+            return httpx.Response(400, json={"error": {"message": "Unsupported parameter: 'max_tokens' is not supported with this model. "
+                                                                  "Use 'max_completion_tokens' instead.", "code": "unsupported_parameter"}})
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"ok": 1}'}}], "usage": {}})
+
+    p = OpenAICompatProvider("https://api.openai.com/v1", "k", "gpt-x", transport=httpx.MockTransport(handler),
+                             extra_body={"reasoning_effort": "low"})
+    gw = AIGateway(db, p)
+    assert await gw.chat_json("s", "u", purpose="t", user_id=None, max_tokens=100) == {"ok": 1}
+    assert await gw.chat_json("s", "u", purpose="t", user_id=None, max_tokens=100) == {"ok": 1}
+    assert len(bodies) == 3  # one rejected request, then the mode is remembered
+    assert bodies[-1]["max_completion_tokens"] == 400 and "temperature" not in bodies[-1] and bodies[-1]["reasoning_effort"] == "low"

@@ -49,22 +49,41 @@ class OpenAICompatProvider:
     name = "openai_compat"
 
     def __init__(self, base_url: str, api_key: str, chat_model: str, embed_model: str = "", timeout: float = 60.0,
-                 transport: httpx.AsyncBaseTransport | None = None) -> None:
+                 transport: httpx.AsyncBaseTransport | None = None, extra_body: dict | None = None) -> None:
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         self._http = httpx.AsyncClient(base_url=base_url.rstrip("/"), headers=headers, timeout=timeout, transport=transport)
         self.chat_model = chat_model
         self.embed_model = embed_model
+        self.extra_body = dict(extra_body or {})
+        # Reasoning models (OpenAI GPT-5 / o-series) reject ``max_tokens`` and a non-default ``temperature``;
+        # they need ``max_completion_tokens`` with room for hidden reasoning. Detected on the first 400, then kept.
+        self.reasoning_mode = False
 
-    async def chat_json(self, system: str, user: str, *, max_tokens: int = 800) -> ChatResult:
-        body = {
-            "model": self.chat_model, "temperature": 0, "max_tokens": max_tokens,
+    def _body(self, system: str, user: str, max_tokens: int) -> dict:
+        body: dict = {
+            "model": self.chat_model,
             "response_format": {"type": "json_object"},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
-        r = await self._http.post("/chat/completions", json=body)
+        if self.reasoning_mode:
+            body["max_completion_tokens"] = max_tokens * 4
+        else:
+            body["temperature"] = 0
+            body["max_tokens"] = max_tokens
+        body.update(self.extra_body)
+        return body
+
+    async def chat_json(self, system: str, user: str, *, max_tokens: int = 800) -> ChatResult:
+        r = await self._http.post("/chat/completions", json=self._body(system, user, max_tokens))
+        if r.status_code == 400 and not self.reasoning_mode and any(
+            w in r.text for w in ("max_tokens", "max_completion_tokens", "temperature", "unsupported_parameter", "unsupported_value")
+        ):
+            self.reasoning_mode = True
+            log.info("ai_provider_reasoning_mode", model=self.chat_model)
+            r = await self._http.post("/chat/completions", json=self._body(system, user, max_tokens))
         r.raise_for_status()
         data = r.json()
-        content = data["choices"][0]["message"]["content"]
+        content = data["choices"][0]["message"].get("content") or ""
         usage = data.get("usage") or {}
         return ChatResult(parse_json_object(content), int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0)))
 

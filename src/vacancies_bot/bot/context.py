@@ -53,7 +53,7 @@ def build_context(settings: Settings, *, db: Database | None = None, client: Cra
     provider = ai_provider
     if provider is None and settings.ai_provider == "openai_compat":
         provider = OpenAICompatProvider(settings.ai_base_url, settings.ai_api_key.get_secret_value(), settings.ai_chat_model,
-                                        settings.ai_embed_model, timeout=settings.ai_timeout_s)
+                                        settings.ai_embed_model, timeout=settings.ai_timeout_s, extra_body=settings.ai_chat_extra)
     gateway = AIGateway(db, provider, label=settings.ai_provider_label, monthly_budget_usd=settings.ai_monthly_budget_usd,
                         daily_user_calls=settings.ai_daily_user_calls, price_in_per_1k=settings.ai_price_in_per_1k,
                         price_out_per_1k=settings.ai_price_out_per_1k)

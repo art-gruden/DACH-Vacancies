@@ -259,6 +259,7 @@ tmp=$(mktemp "$ENV_FILE.XXXXXX")
   echo "AI_PRICE_IN_PER_1K=$AI_PRICE_IN_PER_1K"
   echo "AI_PRICE_OUT_PER_1K=$AI_PRICE_OUT_PER_1K"
   echo "AI_SEMANTIC_WEIGHT=$(q "$(cur AI_SEMANTIC_WEIGHT 0.2)")"
+  echo "AI_CHAT_EXTRA=$(q "$(cur AI_CHAT_EXTRA '{}')")"
   echo
   echo "# --- CV"
   echo "CV_ENCRYPTION_KEY=$(q "$CV_ENCRYPTION_KEY")"
