@@ -1,4 +1,6 @@
-.PHONY: install test test-pg lint run migrate check demo contract
+.PHONY: setup install test test-pg lint run migrate check demo contract
+setup:     # interactive .env + start
+	./install.sh
 install:
 	pip install -e ".[dev]"
 test:

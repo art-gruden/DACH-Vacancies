@@ -17,14 +17,20 @@ Crawler не меняется и не получает никаких данны
 ## Быстрый старт
 
 ```bash
-cp .env.example .env            # BOT_TOKEN, BOT_DB_PASSWORD, CRAWLER_API_TOKEN, (опц.) CV_ENCRYPTION_KEY
-docker compose up -d --build    # bot-db (PostgreSQL 16) + bot: alembic upgrade head → polling + воркеры
+./install.sh                              # спросит параметры и создаст .env, затем docker compose up -d --build
+./install.sh --crawler-dir /opt/Crawdler  # бот на сервере crawler: ключ Bot API создаётся и прописывается автоматически
 docker compose logs -f bot
 ```
 
+`install.sh` проверяет токен бота (`getMe`) и токен crawler, генерирует пароль БД и ключ шифрования CV, создаёт `.env`
+с правами 600. При повторном запуске текущие значения подставляются по умолчанию, сгенерированные секреты не меняются,
+старый `.env` сохраняется как `.env.bak.<время>`. Флаги: `--non-interactive` (значения из переменных окружения),
+`--no-start`, `--start`. Вручную: `cp .env.example .env` и `docker compose up -d --build`.
+
 ### Токен crawler (обязательно)
 Сейчас `https://crawdler.duckdns.org/api/bot/v1/*` отвечает **503 «Bot API is disabled»**: на сервере crawler не задан
-`BOT_API_KEYS`. Код crawler менять не нужно, только конфигурацию:
+`BOT_API_KEYS`. Код crawler менять не нужно, только конфигурацию — это делает `./install.sh --crawler-dir /opt/Crawdler`
+(бэкап `.env` crawler, добавление ключа, перезапуск `api`) или вручную:
 
 ```bash
 # на сервере crawler (/opt/Crawdler)

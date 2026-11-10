@@ -2,13 +2,15 @@
 
 Бот — новый отдельный сервис со своей БД; существующие функции crawler не затрагиваются, схема crawler не меняется.
 
+Если бот ставится на сервер crawler, шаги 1 и 2.1 выполняет `./install.sh --crawler-dir /opt/Crawdler`.
+
 ## 1. Crawler (только конфигурация, 5 минут)
 1. `docker compose exec api python -m gcc_core.botauth generate telegram`
 2. В `.env` crawler: `BOT_API_KEYS=telegram:sha256:<hex>`; при необходимости `BOT_RATE_LIMIT_PER_MIN`.
 3. `docker compose up -d api` → `/api/bot/v1/facets/countries` с токеном отвечает 200, без токена 401.
 
 ## 2. Бот
-1. `cp .env.example .env`, заполнить `BOT_TOKEN`, `BOT_DB_PASSWORD`, `CRAWLER_API_TOKEN`, (опц.) `CV_ENCRYPTION_KEY`.
+1. `./install.sh` (или `cp .env.example .env` и заполнить `BOT_TOKEN`, `BOT_DB_PASSWORD`, `CRAWLER_API_TOKEN`, опц. `CV_ENCRYPTION_KEY`).
 2. `docker compose up -d --build` — контейнер сам выполняет `alembic upgrade head` (ревизия `0001`, 16 таблиц), затем запускает бота.
 3. `docker compose run --rm bot vacancies-bot check-crawler` — все строки `OK`.
 4. Первый цикл ленты возьмёт курсор из `/changes/head`: история crawler не рассылается.
